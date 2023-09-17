@@ -11,7 +11,7 @@ import basic_timers
 import basic_state_machine
 import std/tables
 import std/random
-
+import std/threadpool
 export raft_api
 
 type
@@ -46,12 +46,11 @@ proc BasicRaftClusterClientRequest*(cluster: BasicRaftCluster, req: RaftNodeClie
       discard
 
 proc BasicRaftClusterInit*(nodesIds: seq[RaftNodeId]): BasicRaftCluster =
-  randomize()
   new(result)
   for nodeId in nodesIds:
     var
       peersIds = nodesIds
 
     peersIds.del(peersIds.find(nodeId))
-    result.nodes[nodeId] = BasicRaftNode.new(nodeId, peersIds, BasicRaftClusterRaftMessageSendCallbackCreate[SmCommand, SmState](result), electionTimeout=150, heartBeatTimeout=150)
+    result.nodes[nodeId] = BasicRaftNode.new(nodeId, peersIds, BasicRaftClusterRaftMessageSendCallbackCreate[SmCommand, SmState](result), electionTimeout=50, heartBeatTimeout=50)
 

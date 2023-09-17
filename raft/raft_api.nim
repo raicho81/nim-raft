@@ -128,9 +128,9 @@ template RaftTimerCreate(timerInterval: int, timerCallback: RaftTimerCallback): 
 
 # Timers scheduling stuff etc.
 proc RaftNodeScheduleHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
-  node.heartBeatTimer = RaftTimerCreate(node.heartBeatTimeout, proc() = RaftNodeSendHeartBeat(node))
+  node.heartBeatTimer = RaftTimerCreate(node.heartBeatTimeout, proc() = asyncSpawn RaftNodeSendHeartBeat(node))
 
-proc RaftNodeSendHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
+proc RaftNodeSendHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) {.async.} =
   debug "Raft Node sending Heart-Beat to peers", node_id=node.id
   for raftPeer in node.peers:
     let msgHrtBt = RaftMessage[SmCommandType, SmStateType](
@@ -167,6 +167,7 @@ proc RaftNodeStop*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmS
   RaftNodeCancelAllTimers(node)
 
 proc RaftNodeStart*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =
+  randomize()
   node.state = rnsFollower
   debug "Start Raft Node", node_id=node.id, state=node.state
   RaftNodeScheduleElectionTimeout(node)

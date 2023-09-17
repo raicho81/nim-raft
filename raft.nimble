@@ -32,7 +32,7 @@ proc buildBinary(name: string, srcDir = "./", params = "", lang = "c") =
   var extra_params = params
   for i in 2..<paramCount():
     extra_params &= " " & paramStr(i)
-  exec "nim " & lang & " --threads:on " & extra_params & " --out:build/" & name & " " & srcDir & name & ".nim"
+  exec "nim " & lang & " --threads:on --gc:orc " & extra_params & " --out:build/" & name & " " & srcDir & name & ".nim"
 
 proc test(path: string, name: string, params = "", lang = "c") =
   # Verify stack usage is kept low by setting 750k stack limit in tests.
