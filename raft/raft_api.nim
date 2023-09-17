@@ -138,8 +138,7 @@ proc RaftNodeSendHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmCommand
       senderTerm: RaftNodeTermGet(node), commitIndex: node.commitIndex,
       prevLogIndex: RaftNodeLogIndexGet(node) - 1, prevLogTerm: if RaftNodeLogIndexGet(node) > 0: RaftNodeLogEntryGet(node, RaftNodeLogIndexGet(node) - 1).term else: 0
     )
-    let r = node.msgSendCallback(msgHrtBt)
-    discard r
+    discard node.msgSendCallback(msgHrtBt)
   RaftNodeScheduleHeartBeat(node)
 
 proc RaftNodeScheduleElectionTimeout*[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]) =

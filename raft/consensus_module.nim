@@ -11,7 +11,6 @@ import types
 import protocol
 import log_ops
 import chronicles
-import async_util
 
 proc RaftNodeQuorumMin[SmCommandType, SmStateType](node: RaftNode[SmCommandType, SmStateType]): bool =
   result = false
