@@ -26,6 +26,8 @@ proc RaftNodeHandleHeartBeat*[SmCommandType, SmStateType](node: RaftNode[SmComma
   debug "Received heart-beat", node_id=node.id, sender_id=msg.sender_id, node_current_term=node.currentTerm, sender_term=msg.senderTerm
   result = RaftMessageResponse[SmCommandType, SmStateType](op: rmoAppendLogEntry, senderId: node.id, receiverId: msg.senderId, msgId: msg.msgId, success: false)
   withRLock(node.raftStateMutex):
+    if node.state == rnsStopped:
+      return
     if msg.senderTerm >= node.currentTerm:
       RaftNodeCancelAllTimers(node)
       if node.state == rnsCandidate:
@@ -40,7 +42,9 @@ proc RaftNodeHandleRequestVote*[SmCommandType, SmStateType](node: RaftNode[SmCom
     RaftMessageResponse[SmCommandType, SmStateType] =
   withRLock(node.raftStateMutex):
     result = RaftMessageResponse[SmCommandType, SmStateType](op: rmoRequestVote, msgId: msg.msgId, senderId: node.id, receiverId: msg.senderId, granted: false)
-    if node.state != rnsCandidate and node.state != rnsStopped and msg.senderTerm > node.currentTerm and node.votedFor == DefaultUUID:
+    if node.state == rnsStopped:
+      return
+    if node.state != rnsCandidate and msg.senderTerm > node.currentTerm and node.votedFor == DefaultUUID:
       if msg.lastLogTerm >= RaftNodeLogEntryGet(node, RaftNodeLogIndexGet(node)).term or
         (msg.lastLogTerm == RaftNodeLogEntryGet(node, RaftNodeLogIndexGet(node)).term and msg.lastLogIndex >= RaftNodeLogIndexGet(node)):
         if node.electionTimeoutTimer != nil:
@@ -79,20 +83,17 @@ proc RaftNodeStartElection*[SmCommandType, SmStateType](node: RaftNode[SmCommand
 
   # Process votes (if any)
   for voteFut in node.votesFuts:
-    try:
-      await voteFut or sleepAsync(milliseconds(node.votingTimeout))
-      if not voteFut.finished:
-        await cancelAndWait(voteFut)
-      else:
-        if not voteFut.cancelled:
-          let respVote = RaftMessageResponse[SmCommandType, SmStateType](voteFut.read)
-          debug "Received vote", node_id=node.id, sender_id=respVote.senderId, granted=respVote.granted
+    await voteFut or sleepAsync(milliseconds(node.votingTimeout))
+    if not voteFut.finished:
+      await cancelAndWait(voteFut)
+    else:
+      if not voteFut.cancelled:
+        let respVote = RaftMessageResponse[SmCommandType, SmStateType](voteFut.read)
+        debug "Received vote", node_id=node.id, sender_id=respVote.senderId, granted=respVote.granted
 
-          for p in node.peers:
-            if p.id == respVote.senderId:
-              p.hasVoted = respVote.granted
-    except Exception as e:
-      discard
+        for p in node.peers:
+          if p.id == respVote.senderId:
+            p.hasVoted = respVote.granted
 
   withRLock(node.raftStateMutex):
     if node.state == rnsCandidate:

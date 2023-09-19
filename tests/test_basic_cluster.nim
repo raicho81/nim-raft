@@ -21,14 +21,14 @@ proc basicClusterMain*() =
       for i in 0..4:
         nodesIds[i] = genUUID()
 
-      cluster = BasicRaftClusterInit(nodesIds)
+      cluster = BasicRaftClusterInit(nodesIds, 5, 5)
 
     test "Generate Random Client SmCommands Queue":
       discard
 
     test "Start Basic Raft Cluster And wait it to converge 10s (Elect a Leader)":
       BasicRaftClusterStart(cluster)
-      let dur = seconds(10)
+      let dur = seconds(120)
       waitFor sleepAsync(dur)
 
     test "Simulate Basic Raft Cluster Client SmCommands Execution / Log Replication":
